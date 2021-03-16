@@ -3,7 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[AttributeUsage(AttributeTargets.Field)]
-public class InjectAttribute : Attribute
+namespace FInject
 {
+    [AttributeUsage(AttributeTargets.Field)]
+    public class InjectAttribute : Attribute
+    {
+    }
 }
