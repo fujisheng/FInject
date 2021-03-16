@@ -51,6 +51,15 @@ namespace FInject
         }
 
         /// <summary>
+        /// 判断是否为空
+        /// </summary>
+        /// <returns></returns>
+        public bool IsEmpty()
+        {
+            return bindType == null && instance == null;
+        }
+
+        /// <summary>
         /// 将某个类型绑定成T类型
         /// </summary>
         /// <typeparam name="T">注入后的类型</typeparam>

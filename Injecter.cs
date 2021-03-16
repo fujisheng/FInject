@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using UnityEngine;
 
 namespace FInject
 {
@@ -31,12 +29,19 @@ namespace FInject
         /// 切换上下文 会将已经注入的重新注入
         /// </summary>
         /// <param name="context">上下文</param>
-        public void SwitchContext(Context context)
+        /// <param name="releaseOldContext">是否释放之前的上下文</param>
+        public void SwitchContext(Context context, bool releaseOldContext = false)
         {
             if(context == null)
             {
                 throw new ArgumentNullException("context");
             }
+
+            if (releaseOldContext)
+            {
+                this.context.Release();
+            }
+
             this.context = context;
 
             foreach(var injected in injectedCache)
@@ -149,14 +154,15 @@ namespace FInject
                 {
                     if (attribute is InjectAttribute)
                     {
-                        if (fieldInfo.IsStatic)
+                        var bindInfo = context.GetBindInfo(fieldInfo.FieldType, type);
+                        if(bindInfo == null || bindInfo.IsEmpty())
                         {
-                            fieldInfo.SetValue(type, Create(context.GetBindInfo(fieldInfo.FieldType, type)));
+                            break;
                         }
-                        else
-                        {
-                            fieldInfo.SetValue(instance, Create(context.GetBindInfo(fieldInfo.FieldType, type)));
-                        }
+
+                        var owner = fieldInfo.IsStatic ? type : instance;
+                        fieldInfo.SetValue(owner, Create(bindInfo));
+                        break;
                     }
                 }
             }
@@ -169,7 +175,7 @@ namespace FInject
                 {
                     injectedCache[i] = instance;
                     replace = true;
-                    continue;
+                    break;
                 }
             }
 

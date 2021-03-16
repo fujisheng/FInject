@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace FInject
 {
@@ -90,12 +89,77 @@ namespace FInject
         /// <summary>
         /// 获取绑定信息
         /// </summary>
-        /// <param name="originType">注入的类型</param>
+        /// <param name="originType">要被注入的类型</param>
         /// <param name="containerType">被注入的类型所在的类型</param>
         /// <returns></returns>
         internal BindInfo GetBindInfo(Type originType, Type containerType)
         {
-            return null;
+            var get = bindMapping.TryGetValue(originType, out List<BindInfo> bindInfos);
+            if (!get)
+            {
+                return null;
+            }
+
+            if(bindInfos.Count <= 0)
+            {
+                return null;
+            }
+
+            //TODO 优化
+            bindInfos.Sort((l, r) =>
+            {
+                var linfo = CheckBindInfo(l, containerType);
+                var rinfo = CheckBindInfo(r, containerType);
+                if(linfo.sameCont != rinfo.sameCont)
+                {
+                    return linfo.sameCont == true ? 1 : -1;
+                }
+                else if(linfo.checkerT != rinfo.checkerT)
+                {
+                    return linfo.checkerT == true ? 1 : -1;
+                }
+                else if(linfo.hasInst != rinfo.hasInst)
+                {
+                    return linfo.hasInst == true ? 1 : -1;
+                }
+                else
+                {
+                    return 1;
+                }
+            });
+
+            return bindInfos[0];
+        }
+
+        /// <summary>
+        /// 检查信息
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="containerType"></param>
+        /// <returns></returns>
+        (bool sameCont, bool checkerT, bool hasInst) CheckBindInfo(BindInfo info, Type containerType)
+        {
+            var sameCont = info.containerType == containerType;
+            var checkerT = info.checker != null && info.checker.Invoke(containerType);
+            var hasInst = info.instance != null;
+            return (sameCont, checkerT, hasInst);
+        }
+
+        /// <summary>
+        /// 释放
+        /// </summary>
+        public void Release()
+        {
+            foreach(var kv in bindMapping)
+            {
+                var bindInfos = kv.Value;
+                foreach(var bindInfo in bindInfos)
+                {
+                    BindInfoPool.Push(bindInfo);
+                }
+            }
+
+            bindMapping.Clear();
         }
     }
 }
