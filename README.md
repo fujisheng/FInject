@@ -1,9 +1,10 @@
-c#版依赖注入框架 目前仅仅支持字段注入 后续添加其他注入方式
-具体依赖注入的概念自行百度
-其目的是为了方便修改具体实现并且不会侵入原有的代码
-目前此框架实现较为简单，具体性能还未测试，仅仅用于学习如何简单的实现依赖注入
+#c#版依赖注入框架 目前仅仅支持字段注入 后续添加其他注入方式
+##具体依赖注入的概念自行百度
+##其目的是为了方便修改具体实现并且不会侵入原有的代码
+##目前此框架实现较为简单，具体性能还未测试，仅仅用于学习如何简单的实现依赖注入
 
-定义一个IDebuger接口
+```
+//定义一个IDebuger接口
 public interface IDebuger
 {
     void Log(string str);
@@ -77,3 +78,4 @@ public class Test : MonoBehaviour
         DebugUtils.Log("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
     }
 }
+```
