@@ -7,7 +7,10 @@ public class Test : MonoBehaviour
 {
     private void Start()
     {
-        Context.Bind<IDebuger, UnityDebuger>(typeof(DebugUtils));
+        Context context = new Context();
+        context.Bind<IDebuger>().WithInstance(new UnityDebuger());
+        context.Bind<IDebuger>().To<NetDebuger>().Where((type) => type == typeof(DebugUtils) );
+        context.Bind<IDebuger, Debuger>().To<UnityDebuger>();
 
 
         DebugUtils.Log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

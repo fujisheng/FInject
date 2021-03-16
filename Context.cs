@@ -4,77 +4,98 @@ using System.Reflection;
 
 namespace FInject
 {
-    public static class Context
+    /// <summary>
+    /// 依赖注入的上下文 保存注入的上下关系
+    /// </summary>
+    public class Context
     {
-        static Dictionary<Type, Type> bindMapping = new Dictionary<Type, Type>();
+        Dictionary<Type, List<BindInfo>> bindMapping = new Dictionary<Type, List<BindInfo>>();
 
-        public static void Bind<T1, T2>()
+        /// <summary>
+        /// 绑定要注入的类型
+        /// </summary>
+        /// <typeparam name="T1">要被注入的类型</typeparam>
+        /// <returns>绑定信息</returns>
+        public BindInfo Bind<T1>()
+        {
+            var type = typeof(T1);
+            return Bind(type);
+        }
+
+        /// <summary>
+        /// 绑定要注入的类型
+        /// </summary>
+        /// <param name="type">要被注入的类型</param>
+        /// <returns>绑定信息</returns>
+        public BindInfo Bind(Type type)
+        {
+            return Bind(type, null);
+        }
+
+        /// <summary>
+        /// 指定某个类型中绑定要注入的类型
+        /// </summary>
+        /// <typeparam name="T1">要被注入的类型</typeparam>
+        /// <typeparam name="T2">指定在这个类型下才采用这种注入方式</typeparam>
+        /// <returns></returns>
+        public BindInfo Bind<T1, T2>()
         {
             var type1 = typeof(T1);
             var type2 = typeof(T2);
+            return Bind(type1, type2);
+        }
 
-            if (!type1.IsAssignableFrom(type2))
-            {
-                throw new Exception($"{type2.FullName} is not assignable from {type1.FullName}");
-            }
-
-            var get = bindMapping.TryGetValue(type1, out Type type);
+        /// <summary>
+        /// 指定某个类型中绑定要注入的类型
+        /// </summary>
+        /// <param name="type1">要被注入的类型</param>
+        /// <param name="type2">指定在这个类型下才采用这种注入方式</param>
+        /// <returns></returns>
+        public BindInfo Bind(Type type1, Type type2)
+        {
+            var get = bindMapping.TryGetValue(type1, out List<BindInfo> bindInfos);
+            var bindInfo = BindInfoPool.Pop();
+            bindInfo.originType = type1;
+            bindInfo.containerType = type2;
             if (!get)
             {
-                bindMapping.Add(type1, type2);
-            }
-            else
-            {
-                throw new Exception($"{type1.FullName} is already bind to {type2.FullName}");
-            }
-        }
-
-        public static void Bind<T1, T2>(Type staticType)
-        {
-            Bind<T1, T2>();
-
-            foreach (var fieldInfo in staticType.GetFields(/*BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase |*/ BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public))
-            {
-                foreach (var attribute in fieldInfo.GetCustomAttributes(true))
+                if (bindInfos == null)
                 {
-                    if (attribute is InjectAttribute)
-                    {
-                        fieldInfo.SetValue(staticType, Create(GetBindType(fieldInfo.FieldType)));
-                    }
+                    bindInfos = new List<BindInfo>();
+                }
+                bindInfos.Add(bindInfo);
+                bindMapping.Add(type1, bindInfos);
+                return bindInfo;
+            }
+
+            var replace = false;
+
+            for (int i = 0; i < bindInfos.Count; i++)
+            {
+                if (bindInfos[i].Equals(bindInfo))
+                {
+                    bindInfos[i] = bindInfo;
+                    replace = true;
                 }
             }
-        }
 
-        static Type GetBindType(Type type)
-        {
-            var get = bindMapping.TryGetValue(type, out Type bindType);
-            if (!get)
+            if (!replace)
             {
-                throw new Exception($"{type.FullName} is not bind any Type");
+                bindInfos.Add(bindInfo);
             }
-            return bindType;
+
+            return bindInfo;
         }
 
-        static object Create(Type type)
+        /// <summary>
+        /// 获取绑定信息
+        /// </summary>
+        /// <param name="originType">注入的类型</param>
+        /// <param name="containerType">被注入的类型所在的类型</param>
+        /// <returns></returns>
+        internal BindInfo GetBindInfo(Type originType, Type containerType)
         {
-            var obj = Activator.CreateInstance(type);
-            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic))
-            {
-                foreach (var attribute in fieldInfo.GetCustomAttributes(true))
-                {
-                    if (attribute is InjectAttribute)
-                    {
-                        fieldInfo.SetValue(obj, Create(GetBindType(fieldInfo.FieldType)));
-                    }
-                }
-            }
-            return obj;
-        }
-
-        public static T CreateInstance<T>()
-        {
-            var type = typeof(T);
-            return (T)Create(type);
+            return null;
         }
     }
 }
