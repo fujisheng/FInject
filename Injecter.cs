@@ -9,7 +9,7 @@ namespace FInject
     /// </summary>
     public class Injecter
     {
-        List<object> injectedCache = new List<object>();
+        List<(Type, object)> injectedCache = new List<(Type, object)>();
         Context context;
 
         /// <summary>
@@ -25,6 +25,7 @@ namespace FInject
             this.context = context;
         }
 
+        //TODO  切换的时候有bug 本来另外一个context没有这个注入信息的也会注入进去
         /// <summary>
         /// 切换上下文 会将已经注入的重新注入
         /// </summary>
@@ -44,10 +45,32 @@ namespace FInject
 
             this.context = context;
 
-            foreach(var injected in injectedCache)
+            for(int i = 0; i < injectedCache.Count; i++)
             {
-                Inject(injected);
+                var injected = injectedCache[i];
+                Unject(injected.Item1, injected.Item2);
+                Inject(injected.Item1, injected.Item2);
             }
+        }
+
+        /// <summary>
+        /// 注入的入口
+        /// </summary>
+        /// <param name="type">为哪个类型注入</param>
+        /// <param name="instance">要注入的实例</param>
+        void Inject(Type type, object instance)
+        {
+            InjectFields(type, instance);
+        }
+
+        /// <summary>
+        /// 取消注入的入口
+        /// </summary>
+        /// <param name="type">为哪个类型取消注入</param>
+        /// <param name="instance">要取消的实例</param>
+        void Unject(Type type, object instance)
+        {
+            UnjectFields(type, instance);
         }
 
         /// <summary>
@@ -57,7 +80,7 @@ namespace FInject
         /// <param name="instance">实例</param>
         public void Inject<T1>(T1 instance)
         {
-            Inject(instance);
+            Inject(typeof(T1), instance);
         }
 
         /// <summary>
@@ -66,7 +89,20 @@ namespace FInject
         /// <param name="instance">实例</param>
         public void Inject(object instance)
         {
-            InjectFields(instance);
+            Inject(instance.GetType(), instance);
+        }
+
+        /// <summary>
+        /// 为静态类注入
+        /// </summary>
+        /// <param name="type">静态类型</param>
+        public void Inject(Type type)
+        {
+            if (!type.IsStatic())
+            {
+                throw new Exception($"type {type.FullName} is not static");
+            }
+            Inject(type, null);
         }
 
         /// <summary>
@@ -144,11 +180,11 @@ namespace FInject
         /// <summary>
         /// 注入字段
         /// </summary>
+        /// <param name="type">类型</param>
         /// <param name="instance">实例</param>
-        void InjectFields(object instance)
+        void InjectFields(Type type, object instance = null)
         {
-            var type = instance.GetType();
-            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic))
+            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
             {
                 foreach (var attribute in fieldInfo.GetCustomAttributes(true))
                 {
@@ -171,9 +207,9 @@ namespace FInject
             for(int i = 0; i < injectedCache.Count; i++)
             {
                 var injected = injectedCache[i];
-                if(instance == injected)
+                if(type == injected.Item1 && instance == injected.Item2)
                 {
-                    injectedCache[i] = instance;
+                    injectedCache[i] = (type, instance);
                     replace = true;
                     break;
                 }
@@ -181,7 +217,34 @@ namespace FInject
 
             if (!replace)
             {
-                injectedCache.Add(instance);
+                injectedCache.Add((type, instance));
+            }
+        }
+
+        /// <summary>
+        /// 取消注入字段
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <param name="instance">实例</param>
+        void UnjectFields(Type type, object instance = null)
+        {
+            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
+            {
+                foreach (var attribute in fieldInfo.GetCustomAttributes(true))
+                {
+                    if (attribute is InjectAttribute)
+                    {
+                        var bindInfo = context.GetBindInfo(fieldInfo.FieldType, type);
+                        if (bindInfo == null || bindInfo.IsEmpty())
+                        {
+                            break;
+                        }
+
+                        var owner = fieldInfo.IsStatic ? type : instance;
+                        fieldInfo.SetValue(owner, null);
+                        break;
+                    }
+                }
             }
         }
 
@@ -191,9 +254,13 @@ namespace FInject
         /// <param name="instance">实例</param>
         public void Release(object instance)
         {
-            if (injectedCache.Contains(instance))
+            for(int i = 0; i < injectedCache.Count; i++)
             {
-                injectedCache.Remove(instance);
+                var data = injectedCache[i];
+                if(data.Item2 == instance)
+                {
+                    injectedCache.Remove(data);
+                }
             }
         }
     }

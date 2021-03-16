@@ -118,9 +118,9 @@ namespace FInject
             }
 
             var instanceType = instance.GetType();
-            if (!instanceType.IsAssignableFrom(originType))
+            if (!originType.IsAssignableFrom(instanceType))
             {
-                throw new Exception($"{instanceType.FullName} is not assignable from {originType.FullName}");
+                throw new Exception($"{originType.FullName} is not assignable from {instanceType.FullName}");
             }
 
             this.instance = instance;

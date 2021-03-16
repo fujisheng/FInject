@@ -105,7 +105,7 @@ namespace FInject
                 return null;
             }
 
-            //TODO 优化
+            //TODO 优化  修bug 当只有一条绑定信息的时候 无论如何都能选择到注入信息
             bindInfos.Sort((l, r) =>
             {
                 var linfo = CheckBindInfo(l, containerType);
