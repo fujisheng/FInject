@@ -10,6 +10,7 @@ namespace FInject
     public class Injecter
     {
         List<(Type, object)> injectedCache = new List<(Type, object)>();
+        readonly BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Static;
         Context context;
 
         /// <summary>
@@ -60,7 +61,9 @@ namespace FInject
         /// <param name="instance">要注入的实例</param>
         void Inject(Type type, object instance)
         {
-            InjectFields(type, instance);
+            InjectWithFields(type, instance);
+            InjectWithMethod(type, instance);
+            InjectWithPropertys(type, instance);
         }
 
         /// <summary>
@@ -112,7 +115,12 @@ namespace FInject
         /// <returns>实例</returns>
         public object CreateInstance(Type type)
         {
-            var instance = Activator.CreateInstance(type);
+            var instance = InjectWithConstructor(type);
+            if (instance == null)
+            {
+                instance = Activator.CreateInstance(type);
+            }
+
             Inject(instance);
             return instance;
         }
@@ -125,7 +133,12 @@ namespace FInject
         /// <returns>实例</returns>
         public object CreateInstance(Type type, params object[] args)
         {
-            var instance = Activator.CreateInstance(type, args);
+            var instance = InjectWithConstructor(type);
+            if(instance == null)
+            {
+                instance = Activator.CreateInstance(type, args);
+            }
+
             Inject(instance);
             return instance;
         }
@@ -178,13 +191,67 @@ namespace FInject
         }
 
         /// <summary>
-        /// 注入字段
+        /// 通过属性注入
         /// </summary>
         /// <param name="type">类型</param>
         /// <param name="instance">实例</param>
-        void InjectFields(Type type, object instance = null)
+        void InjectWithPropertys(Type type, object instance = null)
         {
-            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
+            foreach (var propertyInfo in type.GetProperties(bindingFlags))
+            {
+                foreach (var attribute in propertyInfo.GetCustomAttributes(true))
+                {
+                    if (attribute is InjectAttribute)
+                    {
+                        var bindInfo = context.GetBindInfo(propertyInfo.PropertyType, type);
+                        if (bindInfo == null || bindInfo.IsEmpty())
+                        {
+                            break;
+                        }
+
+                        var owner = propertyInfo.IsStatic() ? type : instance;
+                        propertyInfo.SetValue(owner, Create(bindInfo));
+                        break;
+                    }
+                }
+            }
+
+            Replace(type, instance);
+        }
+
+        /// <summary>
+        /// 替换
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="instance"></param>
+        void Replace(Type type, object instance = null)
+        {
+            bool replace = false;
+            for (int i = 0; i < injectedCache.Count; i++)
+            {
+                var injected = injectedCache[i];
+                if (type == injected.Item1 && instance == injected.Item2)
+                {
+                    injectedCache[i] = (type, instance);
+                    replace = true;
+                    break;
+                }
+            }
+
+            if (!replace)
+            {
+                injectedCache.Add((type, instance));
+            }
+        }
+
+        /// <summary>
+        /// 通过字段注入
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <param name="instance">实例</param>
+        void InjectWithFields(Type type, object instance = null)
+        {
+            foreach (var fieldInfo in type.GetFields(bindingFlags))
             {
                 foreach (var attribute in fieldInfo.GetCustomAttributes(true))
                 {
@@ -203,22 +270,69 @@ namespace FInject
                 }
             }
 
-            bool replace = false;
-            for(int i = 0; i < injectedCache.Count; i++)
+            Replace(type, instance);
+        }
+
+        /// <summary>
+        /// 通过方法注入
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <param name="instance">实例</param>
+        void InjectWithMethod(Type type, object instance = null)
+        {
+            foreach (var methodInfo in type.GetMethods(bindingFlags))
             {
-                var injected = injectedCache[i];
-                if(type == injected.Item1 && instance == injected.Item2)
+                foreach (var attribute in methodInfo.GetCustomAttributes(true))
                 {
-                    injectedCache[i] = (type, instance);
-                    replace = true;
-                    break;
+                    if (attribute is InjectAttribute)
+                    {
+                        var parameterInfos = methodInfo.GetParameters();
+                        if(parameterInfos.Length != 1)
+                        {
+                            break;
+                        }
+
+                        var bindInfo = context.GetBindInfo(parameterInfos[0].ParameterType, type);
+                        if (bindInfo == null || bindInfo.IsEmpty())
+                        {
+                            break;
+                        }
+
+                        var owner = methodInfo.IsStatic ? type : instance;
+                        methodInfo.Invoke(owner, new object[] { Create(bindInfo) });
+                        break;
+                    }
                 }
             }
 
-            if (!replace)
+            Replace(type, instance);
+        }
+
+        /// <summary>
+        /// 通过构造方法注入
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <returns>注入后的实例</returns>
+        object InjectWithConstructor(Type type)
+        {
+            foreach (var ctorInfo in type.GetConstructors(bindingFlags))
             {
-                injectedCache.Add((type, instance));
+                var parameterInfos = ctorInfo.GetParameters();
+                if (parameterInfos.Length != 1)
+                {
+                    break;
+                }
+
+                var bindInfo = context.GetBindInfo(parameterInfos[0].ParameterType, type);
+                if (bindInfo == null || bindInfo.IsEmpty())
+                {
+                    break;
+                }
+
+                return ctorInfo.Invoke(new object[] { Create(bindInfo) });
             }
+
+            return null;
         }
 
         /// <summary>
@@ -228,7 +342,7 @@ namespace FInject
         /// <param name="instance">实例</param>
         void UnjectFields(Type type, object instance = null)
         {
-            foreach (var fieldInfo in type.GetFields(BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static))
+            foreach (var fieldInfo in type.GetFields(bindingFlags))
             {
                 foreach (var attribute in fieldInfo.GetCustomAttributes(true))
                 {

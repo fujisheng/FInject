@@ -105,7 +105,7 @@ namespace FInject
         /// </summary>
         /// <param name="instance">具体的实例</param>
         /// <returns>绑定信息</returns>
-        public BindInfo WithInstance(object instance)
+        public BindInfo ToInstance(object instance)
         {
             if(instance == null)
             {
