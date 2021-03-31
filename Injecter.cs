@@ -60,6 +60,7 @@ namespace FInject
         /// <param name="instance">要注入的实例</param>
         void Inject(Type type, object instance)
         {
+            type = instance == null ? type : instance.GetType();
             InjectWithFields(type, instance);
             InjectWithMethod(type, instance);
             InjectWithPropertys(type, instance);
