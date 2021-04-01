@@ -28,34 +28,9 @@ namespace FInject
         /// <returns>绑定信息</returns>
         public BindInfo Bind(Type type)
         {
-            return Bind(type, null);
-        }
-
-        /// <summary>
-        /// 指定某个类型中绑定要注入的类型
-        /// </summary>
-        /// <typeparam name="T1">要被注入的类型</typeparam>
-        /// <typeparam name="T2">指定在这个类型下才采用这种注入方式</typeparam>
-        /// <returns></returns>
-        public BindInfo Bind<T1, T2>()
-        {
-            var type1 = typeof(T1);
-            var type2 = typeof(T2);
-            return Bind(type1, type2);
-        }
-
-        /// <summary>
-        /// 指定某个类型中绑定要注入的类型
-        /// </summary>
-        /// <param name="type1">要被注入的类型</param>
-        /// <param name="type2">指定在这个类型下才采用这种注入方式</param>
-        /// <returns></returns>
-        public BindInfo Bind(Type type1, Type type2)
-        {
-            var get = bindMapping.TryGetValue(type1, out List<BindInfo> bindInfos);
+            var get = bindMapping.TryGetValue(type, out List<BindInfo> bindInfos);
             var bindInfo = BindInfoPool.Pop();
-            bindInfo.originType = type1;
-            bindInfo.containerType = type2;
+            bindInfo.originType = type;
             if (!get)
             {
                 if (bindInfos == null)
@@ -63,7 +38,7 @@ namespace FInject
                     bindInfos = new List<BindInfo>();
                 }
                 bindInfos.Add(bindInfo);
-                bindMapping.Add(type1, bindInfos);
+                bindMapping.Add(type, bindInfos);
                 return bindInfo;
             }
 

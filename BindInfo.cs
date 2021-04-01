@@ -64,9 +64,9 @@ namespace FInject
         /// </summary>
         /// <typeparam name="T">注入后的类型</typeparam>
         /// <returns>绑定信息</returns>
-        public BindInfo To<T>()
+        public BindInfo As<T>()
         {
-            return To(typeof(T));
+            return As(typeof(T));
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace FInject
         /// </summary>
         /// <param name="bindType">注入后的类型</param>
         /// <returns>绑定信息</returns>
-        public BindInfo To(Type bindType)
+        public BindInfo As(Type bindType)
         {
             if (!originType.IsAssignableFrom(bindType))
             {
@@ -93,6 +93,27 @@ namespace FInject
 
             this.bindType = bindType;
             return this;
+        }
+
+        /// <summary>
+        /// 指定只有这种类型才执行这种绑定方式
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns>绑定信息</returns>
+        public BindInfo When(Type type)
+        {
+            this.containerType = type;
+            return this;
+        }
+
+        /// <summary>
+        /// 指定只有这种类型下的才执行这种绑定方式
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>绑定信息</returns>
+        public BindInfo When<T>()
+        {
+            return When(typeof(T));
         }
 
         /// <summary>
@@ -116,7 +137,7 @@ namespace FInject
         /// </summary>
         /// <param name="instance">具体的实例</param>
         /// <returns>绑定信息</returns>
-        public BindInfo ToInstance(object instance)
+        public BindInfo AsInstance(object instance)
         {
             if(instance == null)
             {
