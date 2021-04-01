@@ -1,56 +1,41 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace FInject
 {
     /// <summary>
     /// 依赖注入器
     /// </summary>
-    public class Injecter
+    public static class Injecter
     {
-        List<(Type, object)> injectedCache = new List<(Type, object)>();
-        Context context;
+        static List<(Type, object)> injectedCache = new List<(Type, object)>();
+        static Context context;
 
         /// <summary>
-        /// 构造方法 需传入上下文
+        /// 上下文 会按照新的context的注入信息重新注入 新context中没有的不会改变 通过构造方法注入的不会更改
         /// </summary>
-        /// <param name="context">上下文</param>
-        public Injecter(Context context)
+        public static Context Context 
         {
-            if(context == null)
+            get { return context; }
+            set 
             {
-                throw new ArgumentNullException("context");
-            }
-            this.context = context;
-        }
+                if (value == null)
+                {
+                    throw new ArgumentNullException("context");
+                }
+                
+                if(value == context)
+                {
+                    return;
+                }
+                context = value;
 
-        //TODO  切换的时候有bug 本来另外一个context没有这个注入信息的也会注入进去
-        /// <summary>
-        /// 切换上下文 会将已经注入的重新注入
-        /// </summary>
-        /// <param name="context">上下文</param>
-        /// <param name="releaseOldContext">是否释放之前的上下文</param>
-        public void SwitchContext(Context context, bool releaseOldContext = false)
-        {
-            if(context == null)
-            {
-                throw new ArgumentNullException("context");
-            }
-
-            if (releaseOldContext)
-            {
-                this.context.Release();
-            }
-
-            this.context = context;
-
-            for(int i = 0; i < injectedCache.Count; i++)
-            {
-                var injected = injectedCache[i];
-                Unject(injected.Item1, injected.Item2);
-                Inject(injected.Item1, injected.Item2);
-            }
+                for (int i = 0; i < injectedCache.Count; i++)
+                {
+                    var injected = injectedCache[i];
+                    Inject(injected.Item1, injected.Item2);
+                }
+            } 
         }
 
         /// <summary>
@@ -58,7 +43,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">为哪个类型注入</param>
         /// <param name="instance">要注入的实例</param>
-        void Inject(Type type, object instance)
+        static void Inject(Type type, object instance)
         {
             type = instance == null ? type : instance.GetType();
             InjectWithFields(type, instance);
@@ -67,21 +52,11 @@ namespace FInject
         }
 
         /// <summary>
-        /// 取消注入的入口
-        /// </summary>
-        /// <param name="type">为哪个类型取消注入</param>
-        /// <param name="instance">要取消的实例</param>
-        void Unject(Type type, object instance)
-        {
-            UnjectFields(type, instance);
-        }
-
-        /// <summary>
         /// 根据实例注入
         /// </summary>
         /// <typeparam name="T1">实例类型</typeparam>
         /// <param name="instance">实例</param>
-        public void Inject<T1>(T1 instance)
+        public static void Inject<T1>(T1 instance)
         {
             Inject(typeof(T1), instance);
         }
@@ -90,7 +65,7 @@ namespace FInject
         /// 根据实例注入
         /// </summary>
         /// <param name="instance">实例</param>
-        public void Inject(object instance)
+        public static void Inject(object instance)
         {
             Inject(instance.GetType(), instance);
         }
@@ -99,7 +74,7 @@ namespace FInject
         /// 为静态类注入
         /// </summary>
         /// <param name="type">静态类型</param>
-        public void Inject(Type type)
+        public static void Inject(Type type)
         {
             if (!type.IsStatic())
             {
@@ -113,7 +88,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">类型</param>
         /// <returns>实例</returns>
-        public object CreateInstance(Type type)
+        public static object CreateInstance(Type type)
         {
             var instance = InjectWithConstructor(type);
             if (instance == null)
@@ -131,7 +106,7 @@ namespace FInject
         /// <param name="type">类型</param>
         /// <param name="args">参数</param>
         /// <returns>实例</returns>
-        public object CreateInstance(Type type, params object[] args)
+        public static object CreateInstance(Type type, params object[] args)
         {
             var instance = InjectWithConstructor(type);
             if(instance == null)
@@ -148,7 +123,7 @@ namespace FInject
         /// </summary>
         /// <typeparam name="T">实例类型</typeparam>
         /// <returns>实例</returns>
-        public T CreateInstance<T>()
+        public static T CreateInstance<T>()
         {
             var type = typeof(T);
             return (T)CreateInstance(type);
@@ -160,7 +135,7 @@ namespace FInject
         /// <typeparam name="T">实例类型</typeparam>
         /// <param name="args">参数</param>>
         /// <returns>实例</returns>
-        public T CreateInstance<T>(params object [] args)
+        public static T CreateInstance<T>(params object [] args)
         {
             var type = typeof(T);
             return (T)CreateInstance(type, args);
@@ -171,7 +146,7 @@ namespace FInject
         /// </summary>
         /// <typeparam name="T">实例类型</typeparam>
         /// <returns>实例</returns>
-        public T CreateInstanceWithNew<T>() where T : new()
+        public static T CreateInstanceWithNew<T>() where T : new()
         {
             var instance = new T();
             Inject(instance);
@@ -183,7 +158,7 @@ namespace FInject
         /// </summary>
         /// <param name="bindInfo"></param>
         /// <returns></returns>
-        object Create(BindInfo bindInfo)
+        static object Create(BindInfo bindInfo)
         {
             var instance = bindInfo.instance ?? CreateInstance(bindInfo.bindType);
             Inject(instance);
@@ -195,7 +170,7 @@ namespace FInject
         /// </summary>
         /// <param name="type"></param>
         /// <param name="instance"></param>
-        void CacheInjected(Type type, object instance = null)
+        static void CacheInjected(Type type, object instance = null)
         {
             bool replace = false;
             for (int i = 0; i < injectedCache.Count; i++)
@@ -220,7 +195,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">类型</param>
         /// <param name="instance">实例</param>
-        void InjectWithPropertys(Type type, object instance = null)
+        static void InjectWithPropertys(Type type, object instance = null)
         {
             foreach(var propertyInfo in Cache.GetPropertyInfos(type))
             {
@@ -242,7 +217,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">类型</param>
         /// <param name="instance">实例</param>
-        void InjectWithFields(Type type, object instance = null)
+        static void InjectWithFields(Type type, object instance = null)
         {
             foreach(var fieldInfo in type.GetFieldInfos())
             {
@@ -264,7 +239,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">类型</param>
         /// <param name="instance">实例</param>
-        void InjectWithMethod(Type type, object instance = null)
+        static void InjectWithMethod(Type type, object instance = null)
         {
             foreach(var methodInfo in type.GetMethodInfos())
             {
@@ -287,7 +262,7 @@ namespace FInject
         /// </summary>
         /// <param name="type">类型</param>
         /// <returns>注入后的实例</returns>
-        object InjectWithConstructor(Type type)
+        static object InjectWithConstructor(Type type)
         {
             var ctorInfo = type.GetConstructorInfo();
             if(ctorInfo == null)
@@ -305,30 +280,10 @@ namespace FInject
         }
 
         /// <summary>
-        /// 取消注入字段
-        /// </summary>
-        /// <param name="type">类型</param>
-        /// <param name="instance">实例</param>
-        void UnjectFields(Type type, object instance = null)
-        {
-            foreach(var fieldInfo in type.GetFieldInfos())
-            {
-                var bindInfo = context.GetBindInfo(fieldInfo.FieldType, type);
-                if (bindInfo == null || bindInfo.IsEmpty())
-                {
-                    continue;
-                }
-
-                var owner = fieldInfo.IsStatic ? type : instance;
-                fieldInfo.SetValue(owner, null);
-            }
-        }
-
-        /// <summary>
         /// 通过这个创建的实例在不使用的时候需要通过这个来进行释放 否则引用会一直存在
         /// </summary>
         /// <param name="instance">实例</param>
-        public void Release(object instance)
+        public static void Release(object instance)
         {
             for(int i = 0; i < injectedCache.Count; i++)
             {
@@ -338,6 +293,14 @@ namespace FInject
                     injectedCache.Remove(data);
                 }
             }
+        }
+
+        /// <summary>
+        /// 释放所有的 已经注入的不会更改
+        /// </summary>
+        public static void Release()
+        {
+            injectedCache.Clear();
         }
     }
 }
