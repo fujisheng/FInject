@@ -80,6 +80,17 @@ namespace FInject
             {
                 throw new Exception($"{originType.FullName} is not assignable from {bindType.FullName}");
             }
+
+            if (bindType.IsInterface)
+            {
+                throw new Exception($"{bindType} BindType can not be interface");
+            }
+
+            if (bindType.IsAbstract)
+            {
+                throw new Exception($"{bindType} BindType can not be abstract");
+            }
+
             this.bindType = bindType;
             return this;
         }
