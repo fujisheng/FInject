@@ -6,29 +6,29 @@ namespace FInject
     /// <summary>
     /// 依赖注入器
     /// </summary>
-    public static class Injecter
+    public static class Bootstrapper
     {
         static List<(Type, object)> injectedCache = new List<(Type, object)>();
-        static Context context;
+        static Container container;
 
         /// <summary>
         /// 上下文 会按照新的context的注入信息重新注入 新context中没有的不会改变 通过构造方法注入的不会更改
         /// </summary>
-        public static Context Context 
+        public static Container Container 
         {
-            get { return context; }
+            get { return container; }
             set 
             {
                 if (value == null)
                 {
-                    throw new ArgumentNullException("context");
+                    throw new ArgumentNullException("container");
                 }
                 
-                if(value == context)
+                if(value == container)
                 {
                     return;
                 }
-                context = value;
+                container = value;
 
                 for (int i = 0; i < injectedCache.Count; i++)
                 {
@@ -199,7 +199,7 @@ namespace FInject
         {
             foreach(var propertyInfo in Cache.GetPropertyInfos(type))
             {
-                var bindInfo = context.GetBindInfo(propertyInfo.PropertyType, type);
+                var bindInfo = container.GetBindInfo(propertyInfo.PropertyType, type);
                 if (bindInfo == null || bindInfo.IsEmpty())
                 {
                     continue;
@@ -221,7 +221,7 @@ namespace FInject
         {
             foreach(var fieldInfo in type.GetFieldInfos())
             {
-                var bindInfo = context.GetBindInfo(fieldInfo.FieldType, type);
+                var bindInfo = container.GetBindInfo(fieldInfo.FieldType, type);
                 if (bindInfo == null || bindInfo.IsEmpty())
                 {
                     continue;
@@ -244,7 +244,7 @@ namespace FInject
             foreach(var methodInfo in type.GetMethodInfos())
             {
                 var parameterInfos = methodInfo.GetParameters();
-                var bindInfo = context.GetBindInfo(parameterInfos[0].ParameterType, type);
+                var bindInfo = container.GetBindInfo(parameterInfos[0].ParameterType, type);
                 if (bindInfo == null || bindInfo.IsEmpty())
                 {
                     continue;
@@ -270,7 +270,7 @@ namespace FInject
                 return null;
             }
             var parameterInfos = ctorInfo.GetParameters();
-            var bindInfo = context.GetBindInfo(parameterInfos[0].ParameterType, type);
+            var bindInfo = container.GetBindInfo(parameterInfos[0].ParameterType, type);
             if (bindInfo == null || bindInfo.IsEmpty())
             {
                 return null;

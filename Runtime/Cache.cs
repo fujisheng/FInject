@@ -7,11 +7,11 @@ namespace FInject
     internal static class Cache
     {
         static readonly BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.GetField | BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Static;
-        static Dictionary<Type, List<FieldInfo>> fieldCache = new Dictionary<Type, List<FieldInfo>>();
-        static Dictionary<Type, List<MethodInfo>> methodCache = new Dictionary<Type, List<MethodInfo>>();
-        static Dictionary<Type, ConstructorInfo> ctorCache = new Dictionary<Type, ConstructorInfo>();
-        static Dictionary<Type, List<PropertyInfo>> propertyCache = new Dictionary<Type, List<PropertyInfo>>();
-        static Type InjectAttributeType = typeof(InjectAttribute);
+        static readonly Dictionary<Type, List<FieldInfo>> fieldCache = new Dictionary<Type, List<FieldInfo>>();
+        static readonly Dictionary<Type, List<MethodInfo>> methodCache = new Dictionary<Type, List<MethodInfo>>();
+        static readonly Dictionary<Type, ConstructorInfo> ctorCache = new Dictionary<Type, ConstructorInfo>();
+        static readonly Dictionary<Type, List<PropertyInfo>> propertyCache = new Dictionary<Type, List<PropertyInfo>>();
+        static readonly Type InjectAttributeType = typeof(InjectAttribute);
 
         /// <summary>
         /// 获取添加了Inject的FieldInfo

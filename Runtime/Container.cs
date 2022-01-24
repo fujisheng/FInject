@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace FInject
 {
     /// <summary>
-    /// 依赖注入的上下文 保存注入的上下关系
+    /// 依赖注入容器 保存注入的关系
     /// </summary>
-    public class Context
+    public class Container
     {
         Dictionary<Type, List<BindInfo>> bindMapping = new Dictionary<Type, List<BindInfo>>();
 
@@ -69,8 +69,7 @@ namespace FInject
         /// <returns></returns>
         internal BindInfo GetBindInfo(Type originType, Type containerType)
         {
-            var get = bindMapping.TryGetValue(originType, out List<BindInfo> bindInfos);
-            if (!get)
+            if(!bindMapping.TryGetValue(originType, out var bindInfos))
             {
                 return null;
             }
